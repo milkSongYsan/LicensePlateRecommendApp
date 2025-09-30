@@ -1,6 +1,8 @@
 # LicensePlateRecommendApp
 
 ## 车管所自选号牌推荐系统
+<img width="2148" height="1251" alt="image" src="https://github.com/user-attachments/assets/60433287-6121-4753-a0d7-5c57fbf70004" />
+
 
 ## 部署
 VS Code + Live Server
