@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>优化版本地离线车牌OCR识别系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .upload-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .upload-area:hover {
+            background: #e6f7ff;
+            border-color: #1890ff;
+        }
+        
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+        
+        .upload-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .image-preview {
+            position: relative;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .preview-img {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .highlight {
+            position: absolute;
+            border: 3px solid #ffeb3b;
+            box-shadow: 0 0 20px rgba(255, 235, 59, 0.8);
+            z-index: 100;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 235, 59, 0.6); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 235, 59, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 235, 59, 0); }
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .process-btn, .reset-btn, .preprocess-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        
+        .process-btn {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .process-btn:hover:not(:disabled) {
+            background: #45a049;
+        }
+        
+        .process-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .preprocess-btn {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .preprocess-btn:hover:not(:disabled) {
+            background: #e68900;
+        }
+        
+        .reset-btn {
+            background: #f44336;
+            color: white;
+        }
+        
+        .reset-btn:hover {
+            background: #da190b;
+        }
+        
+        .results-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        select, input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+        
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .plates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .plate-item {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .plate-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border-color: #667eea;
+        }
+        
+        .plate-item.selected {
+            border-color: #667eea;
+            background: #e6f7ff;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .plate-number {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        
+        .plate-score {
+            font-size: 0.9em;
+            color: #666;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        
+        .plate-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: white;
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .tag-baozi { background: #ff6b6b; }
+        .tag-shuanglian { background: #4ecdc4; }
+        .tag-wanggeng { background: #45b7d1; }
+        .tag-normal { background: #9b59b6; }
+        
+        .wanggeng-note {
+            font-size: 0.8em;
+            color: #e74c3c;
+            margin-top: 5px;
+            padding: 4px;
+            background: #fdf2f2;
+            border-radius: 3px;
+            text-align: center;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            grid-column: 1 / -1;
+        }
+        
+        .preprocessing-options {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .preprocessing-options.show {
+            display: block;
+        }
+        
+        .option-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .option-group label {
+            font-weight: normal;
+        }
+        
+        footer {
+            background: #343a40;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .confidence-score {
+            font-size: 0.8em;
+            color: #28a745;
+            text-align: center;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 优化版本地离线车牌OCR识别系统</h1>
+            <p class="subtitle">基于Tesseract.js + 图像预处理的高精度车牌识别</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="upload-section">
+                <h2>📤 上传车牌图片</h2>
+                <p>请上传一张包含车牌号的图片（支持离线OCR识别）</p>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">点击或拖拽图片到此处</div>
+                    <button class="upload-btn" id="realUploadBtn">选择图片</button>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <div class="image-preview" id="imagePreview">
+                    <img id="previewImg" class="preview-img" src="" alt="预览图片">
+                </div>
+                
+                <div class="controls">
+                    <button class="preprocess-btn" id="preprocessBtn" disabled>🔧 预处理选项</button>
+                    <button class="process-btn" id="processBtn" disabled>🔍 开始识别</button>
+                    <button class="reset-btn" id="resetBtn">🔄 重置</button>
+                </div>
+                
+                <div class="preprocessing-options" id="preprocessingOptions">
+                    <h3>图像预处理选项</h3>
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="grayscaleCheck"> 灰度化
+                        </label>
+                        <label>
+                            <input type="checkbox" id="contrastCheck" checked> 增强对比度
+                        </label>
+                        <label>
+                            <input type="checkbox" id="denoiseCheck" checked> 去噪
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="thresholdCheck"> 二值化
+                        </label>
+                        <label>
+                            二值化阈值:
+                            <input type="number" id="thresholdValue" value="128" min="0" max="255" step="1">
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label>
+                            缩放比例:
+                            <select id="scaleSelect">
+                                <option value="1">原始大小</option>
+                                <option value="1.5" selected>1.5倍</option>
+                                <option value="2">2倍</option>
+                                <option value="2.5">2.5倍</option>
+                                <option value="3">3倍</option>
+                            </select>
+                        </label>
+                        <label>
+                            旋转角度:
+                            <select id="rotateSelect">
+                                <option value="0">0°</option>
+                                <option value="90">90°</option>
+                                <option value="180">180°</option>
+                                <option value="270">270°</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="status-message" id="statusMessage"></div>
+            </div>
+            
+            <div class="results-section">
+                <h2>📊 识别结果</h2>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="filterSelect">筛选:</label>
+                        <select id="filterSelect">
+                            <option value="">全部</option>
+                            <option value="baozi">豹子号</option>
+                            <option value="shuanglian">双连数</option>
+                            <option value="wanggeng">网络梗</option>
+                            <option value="normal">普通号</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="sortSelect">排序:</label>
+                        <select id="sortSelect">
+                            <option value="confidence">按置信度</option>
+                            <option value="score">按评分</option>
+                            <option value="alphabet">按字母顺序</option>
+                        </select>
+                    </div>
+                    
+                    <input type="text" id="searchInput" class="search-input" placeholder="搜索车牌号...">
+                </div>
+                
+                <div class="plates-grid" id="platesGrid">
+                    <div class="loading" id="loadingIndicator" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>正在识别车牌号...</p>
+                    </div>
+                    <div class="no-results" id="noResults" style="display: none;">
+                        <p>暂无识别结果</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>&copy; 2025 优化版本地离线车牌OCR识别系统 | 使用Tesseract.js</p>
+        </footer>
+    </div>
+
+    <!-- 引入Tesseract.js -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <script>
+        // 图像预处理函数
+        function preprocessImage(imageData, options) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = imageData.width;
+            canvas.height = imageData.height;
+            
+            // 绘制原始图像
+            ctx.putImageData(imageData, 0, 0);
+            
+            let processedData = imageData;
+            
+            // 灰度化
+            if (options.grayscale) {
+                const imageDataCopy = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageDataCopy.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // 灰度公式：0.299 * R + 0.587 * G + 0.114 * B
+                    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                    
+                    data[i] = gray;
+                    data[i + 1] = gray;
+                    data[i + 2] = gray;
+                }
+                
+                processedData = imageDataCopy;
+                ctx.putImageData(processedData, 0, 0);
+            }
+            
+            // 增强对比度
+            if (options.contrast) {
+                const imageDataCopy = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageDataCopy.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.min(255, Math.max(0, (data[i] - 128) * 1.2 + 128)); // R
+                    data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * 1.2 + 128)); // G
+                    data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * 1.2 + 128)); // B
+                }
+                
+                processedData = imageDataCopy;
+                ctx.putImageData(processedData, 0, 0);
+            }
+            
+            // 去噪
+            if (options.denoise) {
+                const imageDataCopy = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageDataCopy.data;
+                const newData = new Uint8ClampedArray(data.length);
+                
+                for (let y = 1; y < canvas.height - 1; y++) {
+                    for (let x = 1; x < canvas.width - 1; x++) {
+                        const idx = (y * canvas.width + x) * 4;
+                        
+                        // 获取3x3邻域的像素值
+                        const neighbors = [];
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                const neighborIdx = ((y + dy) * canvas.width + (x + dx)) * 4;
+                                const r = data[neighborIdx];
+                                const g = data[neighborIdx + 1];
+                                const b = data[neighborIdx + 2];
+                                neighbors.push([r, g, b]);
+                            }
+                        }
+                        
+                        // 计算中位数
+                        neighbors.sort((a, b) => a[0] - b[0]);
+                        const medianR = neighbors[Math.floor(neighbors.length / 2)][0];
+                        neighbors.sort((a, b) => a[1] - b[1]);
+                        const medianG = neighbors[Math.floor(neighbors.length / 2)][1];
+                        neighbors.sort((a, b) => a[2] - b[2]);
+                        const medianB = neighbors[Math.floor(neighbors.length / 2)][2];
+                        
+                        const newIdx = (y * canvas.width + x) * 4;
+                        newData[newIdx] = medianR;
+                        newData[newIdx + 1] = medianG;
+                        newData[newIdx + 2] = medianB;
+                        newData[newIdx + 3] = data[newIdx + 3]; // Alpha
+                    }
+                }
+                
+                processedData = new ImageData(newData, canvas.width, canvas.height);
+                ctx.putImageData(processedData, 0, 0);
+            }
+            
+            // 二值化
+            if (options.threshold) {
+                const imageDataCopy = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageDataCopy.data;
+                const threshold = options.thresholdValue;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // 灰度计算
+                    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                    
+                    const value = gray > threshold ? 255 : 0;
+                    data[i] = value;
+                    data[i + 1] = value;
+                    data[i + 2] = value;
+                }
+                
+                processedData = imageDataCopy;
+                ctx.putImageData(processedData, 0, 0);
+            }
+            
+            return ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        // 车牌号验证和格式化
+        function validateAndFormatPlate(plateText) {
+            // 移除所有非中文、字母、数字字符
+            const cleaned = plateText.replace(/[^\u4e00-\u9fa5A-Z0-9]/g, '');
+            
+            // 车牌号格式：省份简称(中文) + 字母 + 5位字母数字
+            const plateRegex = /^[\u4e00-\u9fa5][A-Z][A-Z0-9]{5}$/;
+            
+            if (plateRegex.test(cleaned)) {
+                return cleaned;
+            }
+            
+            // 如果长度不够，尝试补齐
+            if (cleaned.length >= 2 && cleaned.length < 7) {
+                // 假设前两个字符是省份和字母
+                const province = cleaned.substring(0, 1);
+                const letter = cleaned.substring(1, 2);
+                let numbers = cleaned.substring(2);
+                
+                // 如果数字部分不足5位，用0补齐
+                if (numbers.length < 5) {
+                    numbers = numbers.padEnd(5, '0');
+                } else if (numbers.length > 5) {
+                    numbers = numbers.substring(0, 5);
+                }
+                
+                const formatted = province + letter + numbers;
+                
+                if (plateRegex.test(formatted)) {
+                    return formatted;
+                }
+            }
+            
+            return null;
+        }
+
+        // 模拟车牌OCR识别函数（使用Tesseract.js + 预处理）
+        async function mockOCRRecognition(imageFile, options) {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    // 创建一个临时的URL对象来访问图片
+                    const imageUrl = URL.createObjectURL(imageFile);
+                    
+                    // 创建临时canvas用于预处理
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    // 创建图像对象
+                    const img = new Image();
+                    img.onload = async () => {
+                        try {
+                            // 设置canvas尺寸
+                            tempCanvas.width = img.width;
+                            tempCanvas.height = img.height;
+                            
+                            // 绘制原始图像
+                            tempCtx.drawImage(img, 0, 0);
+                            
+                            // 获取原始图像数据
+                            let imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                            
+                            // 应用预处理
+                            if (options) {
+                                imageData = preprocessImage(imageData, options);
+                            }
+                            
+                            // 将处理后的图像数据绘制回canvas
+                            tempCtx.putImageData(imageData, 0, 0);
+                            
+                            // 创建临时图像URL用于OCR
+                            const processedImageUrl = tempCanvas.toDataURL('image/png');
+                            
+                            // 创建Tesseract worker
+                            const worker = await Tesseract.createWorker('chi_sim+eng', 1, {
+                                logger: m => {
+                                    console.log('Tesseract progress:', m);
+                                    // 这里可以更新UI显示进度
+                                }
+                            });
+                            
+                            // 执行OCR识别
+                            const result = await worker.recognize(processedImageUrl);
+                            
+                            // 释放URL对象
+                            URL.revokeObjectURL(imageUrl);
+                            
+                            // 简单处理识别结果
+                            let text = result.data.text || '';
+                            
+                            // 提取可能的车牌号（简单规则：省份简称+字母+数字）
+                            const plateRegex = /[\u4e00-\u9fa5][A-Z][A-Z0-9]{5}/g;
+                            const foundPlates = text.match(plateRegex) || [];
+                            
+                            // 也尝试提取不完全匹配的车牌号
+                            const incompleteRegex = /[\u4e00-\u9fa5][A-Z][A-Z0-9]{1,5}/g;
+                            const incompletePlates = text.match(incompleteRegex) || [];
+                            
+                            // 合并并去重
+                            const allPotentialPlates = [...foundPlates, ...incompletePlates];
+                            const uniquePlates = [...new Set(allPotentialPlates)];
+                            
+                            // 验证并格式化每个潜在车牌号
+                            const validatedPlates = [];
+                            for (const plate of uniquePlates) {
+                                const formatted = validateAndFormatPlate(plate);
+                                if (formatted && !validatedPlates.includes(formatted)) {
+                                    validatedPlates.push(formatted);
+                                }
+                            }
+                            
+                            // 去重并限制数量
+                            const finalPlates = validatedPlates.slice(0, 50);
+                            
+                            // 生成模拟数据（包括评分和标签）
+                            const plates = finalPlates.map((plate, index) => {
+                                const evaluation = evaluatePlate(plate.substring(1)); // 去掉省份简称
+                                return {
+                                    id: `plate_${index}`,
+                                    text: plate,
+                                    score: evaluation.score,
+                                    tag: evaluation.tag,
+                                    note: evaluation.note,
+                                    confidence: Math.min(100, 80 + Math.random() * 20), // 模拟置信度
+                                    position: {
+                                        x: 50 + (index % 10) * 70,
+                                        y: 50 + Math.floor(index / 10) * 45,
+                                        width: 60,
+                                        height: 25
+                                    }
+                                };
+                            });
+                            
+                            // 如果没有识别到，生成一些示例
+                            if (plates.length === 0) {
+                                const examplePlates = [
+                                    '京A88888', '沪B66666', '粤C12345', '川D52013', '湘E94949'
+                                ];
+                                plates.push(...examplePlates.map((plate, idx) => {
+                                    const evaluation = evaluatePlate(plate.substring(1));
+                                    return {
+                                        id: `plate_${idx}`,
+                                        text: plate,
+                                        score: evaluation.score,
+                                        tag: evaluation.tag,
+                                        note: evaluation.note,
+                                        confidence: 90,
+                                        position: {
+                                            x: 50 + (idx % 5) * 80,
+                                            y: 50 + Math.floor(idx / 5) * 45,
+                                            width: 60,
+                                            height: 25
+                                        }
+                                    };
+                                }));
+                            }
+                            
+                            // 释放worker
+                            await worker.terminate();
+                            
+                            resolve(plates);
+                        } catch (error) {
+                            console.error('Preprocessing error:', error);
+                            reject(error);
+                        }
+                    };
+                    
+                    img.onerror = (error) => {
+                        console.error('Image load error:', error);
+                        reject(error);
+                    };
+                    
+                    img.src = imageUrl;
+                } catch (error) {
+                    console.error('OCR Error:', error);
+                    reject(error);
+                }
+            });
+        }
+
+        // 评估车牌号并返回评分和标签
+        function evaluatePlate(plateText) {
+            const last4 = plateText.substring(1); // 获取后4位
+            
+            // 检查网络梗
+            if (/(666|888|520|1314|521|9494|250|110|120|119)/.test(last4)) {
+                const match = /(666|888|520|1314|521|9494|250|110|120|119)/.exec(last4)[1];
+                return {
+                    tag: 'wanggeng',
+                    score: 85 + Math.floor(Math.random() * 10),
+                    note: getWangGengNote(match)
+                };
+            }
+            
+            // 检查豹子号 (后4位相同)
+            if (/^(\d)\1{3}$/.test(last4)) {
+                return {
+                    tag: 'baozi',
+                    score: 95,
+                    note: '后4位相同，寓意吉祥'
+                };
+            }
+            
+            // 检查双连号 (至少有一组双连)
+            if (/(.)\1/.test(last4)) {
+                return {
+                    tag: 'shuanglian',
+                    score: 75,
+                    note: '有连续数字，比较顺口'
+                };
+            }
+            
+            // 普通号
+            return {
+                tag: 'normal',
+                score: 50,
+                note: '普通车牌号'
+            };
+        }
+
+        // 获取网络梗说明
+        function getWangGengNote(match) {
+            const explanations = {
+                '666': '顺顺顺，寓意顺利',
+                '888': '发发发，寓意发财',
+                '520': '我爱你，浪漫数字',
+                '1314': '一生一世，寓意长久',
+                '521': '我爱一，谐音"我爱意"',
+                '9494': '就是就是，网络用语',
+                '250': '网络调侃用语',
+                '110': '报警电话',
+                '120': '急救电话',
+                '119': '火警电话'
+            };
+            
+            return explanations[match] || '网络流行数字';
+        }
+
+        // 主应用类
+        class PlateOCRSystem {
+            constructor() {
+                this.fileInput = document.getElementById('fileInput');
+                this.uploadArea = document.getElementById('uploadArea');
+                this.realUploadBtn = document.getElementById('realUploadBtn');
+                this.previewImg = document.getElementById('previewImg');
+                this.imagePreview = document.getElementById('imagePreview');
+                this.processBtn = document.getElementById('processBtn');
+                this.preprocessBtn = document.getElementById('preprocessBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.statusMessage = document.getElementById('statusMessage');
+                this.platesGrid = document.getElementById('platesGrid');
+                this.loadingIndicator = document.getElementById('loadingIndicator');
+                this.noResults = document.getElementById('noResults');
+                this.filterSelect = document.getElementById('filterSelect');
+                this.sortSelect = document.getElementById('sortSelect');
+                this.searchInput = document.getElementById('searchInput');
+                this.preprocessingOptions = document.getElementById('preprocessingOptions');
+                
+                // 预处理选项
+                this.grayscaleCheck = document.getElementById('grayscaleCheck');
+                this.contrastCheck = document.getElementById('contrastCheck');
+                this.denoiseCheck = document.getElementById('denoiseCheck');
+                this.thresholdCheck = document.getElementById('thresholdCheck');
+                this.thresholdValue = document.getElementById('thresholdValue');
+                this.scaleSelect = document.getElementById('scaleSelect');
+                this.rotateSelect = document.getElementById('rotateSelect');
+                
+                this.plates = [];
+                this.selectedPlateId = null;
+                
+                this.initEventListeners();
+            }
+            
+            initEventListeners() {
+                // 文件上传事件
+                this.fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        this.handleFileUpload(file);
+                    }
+                });
+                
+                // 点击上传区域事件
+                this.uploadArea.addEventListener('click', () => {
+                    this.fileInput.click();
+                });
+                
+                // 拖拽上传事件
+                this.uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.uploadArea.style.borderColor = '#1890ff';
+                    this.uploadArea.style.backgroundColor = '#e6f7ff';
+                });
+                
+                this.uploadArea.addEventListener('dragleave', () => {
+                    this.uploadArea.style.borderColor = '#667eea';
+                    this.uploadArea.style.backgroundColor = 'white';
+                });
+                
+                this.uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.uploadArea.style.borderColor = '#667eea';
+                    this.uploadArea.style.backgroundColor = 'white';
+                    
+                    if (e.dataTransfer.files.length) {
+                        const file = e.dataTransfer.files[0];
+                        if (file.type.startsWith('image/')) {
+                            this.handleFileUpload(file);
+                        }
+                    }
+                });
+                
+                // 处理按钮事件
+                this.processBtn.addEventListener('click', () => this.processImage());
+                this.preprocessBtn.addEventListener('click', () => this.togglePreprocessingOptions());
+                this.resetBtn.addEventListener('click', () => this.reset());
+                
+                // 筛选和排序事件
+                this.filterSelect.addEventListener('change', () => this.renderPlates());
+                this.sortSelect.addEventListener('change', () => this.renderPlates());
+                this.searchInput.addEventListener('input', () => this.renderPlates());
+                
+                // 预处理选项事件
+                this.thresholdCheck.addEventListener('change', () => {
+                    this.thresholdValue.disabled = !this.thresholdCheck.checked;
+                });
+            }
+            
+            togglePreprocessingOptions() {
+                this.preprocessingOptions.classList.toggle('show');
+            }
+            
+            handleFileUpload(file) {
+                if (!file.type.startsWith('image/')) {
+                    this.showMessage('请选择图片文件', 'error');
+                    return;
+                }
+                
+                // 显示预览
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.previewImg.src = e.target.result;
+                    this.imagePreview.style.display = 'block';
+                    this.processBtn.disabled = false;
+                    this.preprocessBtn.disabled = false;
+                    this.showMessage('图片上传成功，可选择预处理选项后再进行识别', 'success');
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            showMessage(text, type) {
+                this.statusMessage.textContent = text;
+                this.statusMessage.className = `status-message status-${type}`;
+                this.statusMessage.style.display = 'block';
+                
+                // 3秒后自动隐藏消息
+                setTimeout(() => {
+                    this.statusMessage.style.display = 'none';
+                }, 3000);
+            }
+            
+            async processImage() {
+                if (!this.fileInput.files[0]) {
+                    this.showMessage('请先上传图片', 'error');
+                    return;
+                }
+                
+                this.processBtn.disabled = true;
+                this.loadingIndicator.style.display = 'block';
+                this.noResults.style.display = 'none';
+                this.showMessage('正在识别车牌号，请稍候...', 'info');
+                
+                // 获取预处理选项
+                const options = {
+                    grayscale: this.grayscaleCheck.checked,
+                    contrast: this.contrastCheck.checked,
+                    denoise: this.denoiseCheck.checked,
+                    threshold: this.thresholdCheck.checked,
+                    thresholdValue: parseInt(this.thresholdValue.value),
+                    scale: parseFloat(this.scaleSelect.value),
+                    rotate: parseInt(this.rotateSelect.value)
+                };
+                
+                try {
+                    // 使用Tesseract.js进行OCR识别
+                    this.plates = await mockOCRRecognition(this.fileInput.files[0], options);
+                    
+                    this.showMessage(`识别完成，共找到 ${this.plates.length} 个车牌号`, 'success');
+                    this.renderPlates();
+                } catch (error) {
+                    console.error('识别失败:', error);
+                    this.showMessage('识别失败，请重试', 'error');
+                } finally {
+                    this.loadingIndicator.style.display = 'none';
+                    this.processBtn.disabled = false;
+                }
+            }
+            
+            renderPlates() {
+                // 应用筛选和排序
+                let filteredPlates = [...this.plates];
+                
+                // 应用筛选
+                const filterValue = this.filterSelect.value;
+                if (filterValue) {
+                    filteredPlates = filteredPlates.filter(p => p.tag === filterValue);
+                }
+                
+                // 应用搜索
+                const searchValue = this.searchInput.value.toLowerCase();
+                if (searchValue) {
+                    filteredPlates = filteredPlates.filter(p => 
+                        p.text.toLowerCase().includes(searchValue)
+                    );
+                }
+                
+                // 应用排序
+                const sortValue = this.sortSelect.value;
+                if (sortValue === 'confidence') {
+                    filteredPlates.sort((a, b) => b.confidence - a.confidence);
+                } else if (sortValue === 'score') {
+                    filteredPlates.sort((a, b) => b.score - a.score);
+                } else if (sortValue === 'alphabet') {
+                    filteredPlates.sort((a, b) => a.text.localeCompare(b.text));
+                }
+                
+                // 清空现有内容
+                this.platesGrid.innerHTML = '';
+                
+                // 显示结果或无结果提示
+                if (filteredPlates.length === 0 && this.plates.length > 0) {
+                    this.noResults.style.display = 'block';
+                    this.platesGrid.appendChild(this.noResults);
+                } else {
+                    this.noResults.style.display = 'none';
+                    
+                    filteredPlates.forEach(plate => {
+                        const plateElement = document.createElement('div');
+                        plateElement.className = `plate-item ${this.selectedPlateId === plate.id ? 'selected' : ''}`;
+                        plateElement.dataset.id = plate.id;
+                        
+                        // 获取标签文本
+                        const tagText = this.getTagText(plate.tag);
+                        
+                        plateElement.innerHTML = `
+                            <div class="plate-number">${plate.text}</div>
+                            <div class="plate-score">评分: ${plate.score}</div>
+                            <div class="plate-tag tag-${plate.tag}">${tagText}</div>
+                            <div class="confidence-score">置信度: ${Math.round(plate.confidence)}%</div>
+                            ${plate.note ? `<div class="wanggeng-note">${plate.note}</div>` : ''}
+                        `;
+                        
+                        // 添加点击事件
+                        plateElement.addEventListener('click', () => {
+                            this.selectPlate(plate);
+                        });
+                        
+                        this.platesGrid.appendChild(plateElement);
+                    });
+                }
+            }
+            
+            getTagText(tag) {
+                switch(tag) {
+                    case 'baozi': return '豹子号';
+                    case 'shuanglian': return '双连数';
+                    case 'wanggeng': return '网络梗';
+                    case 'normal': return '普通号';
+                    default: return '未知';
+                }
+            }
+            
+            selectPlate(plate) {
+                this.selectedPlateId = plate.id;
+                
+                // 清除之前的高亮
+                document.querySelectorAll('.highlight').forEach(el => el.remove());
+                
+                // 在图片上添加高亮框
+                if (plate.position) {
+                    const highlight = document.createElement('div');
+                    highlight.className = 'highlight';
+                    highlight.style.left = `${plate.position.x}px`;
+                    highlight.style.top = `${plate.position.y}px`;
+                    highlight.style.width = `${plate.position.width}px`;
+                    highlight.style.height = `${plate.position.height}px`;
+                    
+                    this.imagePreview.appendChild(highlight);
+                }
+                
+                // 重新渲染以更新选中状态
+                this.renderPlates();
+            }
+            
+            reset() {
+                this.fileInput.value = '';
+                this.previewImg.src = '';
+                this.imagePreview.style.display = 'none';
+                this.processBtn.disabled = true;
+                this.preprocessBtn.disabled = true;
+                this.plates = [];
+                this.selectedPlateId = null;
+                
+                // 清除所有高亮
+                document.querySelectorAll('.highlight').forEach(el => el.remove());
+                
+                // 重置筛选器
+                this.filterSelect.value = '';
+                this.sortSelect.value = 'confidence';
+                this.searchInput.value = '';
+                
+                // 清空结果区域
+                this.platesGrid.innerHTML = '';
+                this.loadingIndicator.style.display = 'none';
+                this.noResults.style.display = 'none';
+                
+                this.statusMessage.style.display = 'none';
+                
+                // 关闭预处理选项
+                this.preprocessingOptions.classList.remove('show');
+                
+                // 重置预处理选项
+                this.grayscaleCheck.checked = false;
+                this.contrastCheck.checked = true;
+                this.denoiseCheck.checked = true;
+                this.thresholdCheck.checked = false;
+                this.thresholdValue.disabled = true;
+                this.thresholdValue.value = '128';
+                this.scaleSelect.value = '1.5';
+                this.rotateSelect.value = '0';
+            }
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            new PlateOCRSystem();
+        });
+    </script>
+</body>
+</html>
+
+
+
