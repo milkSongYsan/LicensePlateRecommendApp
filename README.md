@@ -10,6 +10,17 @@ VS Code + Live Server
 - 安装 "Live Server" 插件
 - 右键点击 index.html → "Open with Live Server"
 
+## 生成测试集（generateTest.py）
+
+- 安装pillow依赖
+> pip install pillow
+
+- 运行脚本
+> python generateTest.py
+
+- 生成数量和生成偏好均可在脚本中修改
+
+
 ## 重要说明
 - 首次运行：Tesseract.js 会自动下载中文识别模型（约 20-50MB），需要联网
 - 后续运行：模型会被浏览器缓存，可离线使用
