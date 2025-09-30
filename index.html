@@ -726,33 +726,33 @@
                             console.log('Tesseract result:', text)
                             
                             // 提取可能的车牌号（简单规则：省份简称+字母+数字）
-                            const plateRegex = /[A-Z0-9]{6}/g;
+                            const plateRegex = /[\u4e00-\u9fa5][A-Z][A-Z0-9]{5}/g;
                             const foundPlates = text.match(plateRegex) || [];
                             console.log('Tesseract foundPlates:', text)
                             
                             // 也尝试提取不完全匹配的车牌号
-                            // const incompleteRegex = /[\u4e00-\u9fa5][A-Z][A-Z0-9]{1,5}/g;
-                            // const incompletePlates = text.match(incompleteRegex) || [];
+                            const incompleteRegex = /[\u4e00-\u9fa5][A-Z][A-Z0-9]{1,5}/g;
+                            const incompletePlates = text.match(incompleteRegex) || [];
                             
                             // 合并并去重
-                            // const allPotentialPlates = [...foundPlates, ...incompletePlates];
-                            // const uniquePlates = [...new Set(allPotentialPlates)];
+                            const allPotentialPlates = [...foundPlates, ...incompletePlates];
+                            const uniquePlates = [...new Set(allPotentialPlates)];
                             
                             // 验证并格式化每个潜在车牌号
-                            // const validatedPlates = [];
-                            // for (const plate of uniquePlates) {
-                            //     const formatted = validateAndFormatPlate(plate);
-                            //     if (formatted && !validatedPlates.includes(formatted)) {
-                            //         validatedPlates.push(formatted);
-                            //     }
-                            // }
+                            const validatedPlates = [];
+                            for (const plate of uniquePlates) {
+                                const formatted = validateAndFormatPlate(plate);
+                                if (formatted && !validatedPlates.includes(formatted)) {
+                                    validatedPlates.push(formatted);
+                                }
+                            }
                             
                             // 去重并限制数量
-                            // const finalPlates = validatedPlates.slice(0, 50);
+                            const finalPlates = validatedPlates.slice(0, 50);
                             
                             // 生成模拟数据（包括评分和标签）
-                            const plates = foundPlates.map((plate, index) => {
-                                const evaluation = evaluatePlate(plate);
+                            const plates = finalPlates.map((plate, index) => {
+                                const evaluation = evaluatePlate(plate.substring(1)); // 去掉省份简称
                                 return {
                                     id: `plate_${index}`,
                                     text: plate,
